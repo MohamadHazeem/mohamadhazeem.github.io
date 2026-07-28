@@ -10,7 +10,7 @@
    ============================================================ */
 
 window.HAZEEM_AI = {
-  workerUrl: 'PASTE_YOUR_WORKER_URL_HERE', /* e.g. https://hazeem-ai.yourname.workers.dev */
+  workerUrl: 'https://lingering-cherry-f54d.mhamadhazeem2001.workers.dev',
 
   /* Local testing ONLY (never commit a real key): direct mode
      is used if workerUrl is unset and apiKey is filled in. */
