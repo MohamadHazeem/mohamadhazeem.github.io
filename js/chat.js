@@ -4,9 +4,12 @@
    ============================================================ */
 (() => {
   const cfg = () => window.HAZEEM_AI || {};
-  const keyMissing = () => !cfg().apiKey || /PASTE_YOUR/.test(cfg().apiKey);
-  const ENDPOINT = () =>
-    `https://generativelanguage.googleapis.com/v1beta/models/${cfg().model || 'gemini-flash-latest'}:generateContent?key=${encodeURIComponent(cfg().apiKey)}`;
+  const hasWorker = () => !!cfg().workerUrl && !/PASTE_YOUR/.test(cfg().workerUrl);
+  const hasKey = () => !!cfg().apiKey && !/PASTE_YOUR/.test(cfg().apiKey);
+  const keyMissing = () => !hasWorker() && !hasKey();
+  const ENDPOINT = () => hasWorker()
+    ? cfg().workerUrl
+    : `https://generativelanguage.googleapis.com/v1beta/models/${cfg().model || 'gemini-flash-latest'}:generateContent?key=${encodeURIComponent(cfg().apiKey)}`;
 
   const SYSTEM_PROMPT = `You are "Hazeem AI" — Mohamad Hazeem's digital twin on his portfolio site.
 You speak AS Mohamad, in the FIRST PERSON: always "I", "my", "me" — never "Mohamad", "he" or "his".
@@ -72,7 +75,7 @@ If someone asks about hiring or a project, invite them to email me at mhamadhaze
       if (!opened) {
         opened = true;
         bubble('ai', keyMissing()
-          ? "Hi! I'm Hazeem AI — but I'm not connected yet. Site owner: paste your free Gemini API key into js/config.js (instructions inside) and I'll come alive."
+          ? "Hi! I'm Hazeem AI — but I'm not connected yet. Site owner: deploy the Cloudflare Worker (see cloudflare-worker.js) and paste its URL into js/config.js."
           : "Hi, Mohamad here — well, my AI twin. Ask me anything about my work, how I use AI, or how we could work together.");
       }
       setTimeout(() => input.focus(), 80);

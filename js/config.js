@@ -1,18 +1,19 @@
 /* ============================================================
    Ask Hazeem AI — configuration
 
-   HOW TO GET YOUR FREE API KEY (2 minutes):
-   1. Go to https://aistudio.google.com and sign in with Google.
-   2. Click "Get API key" → "Create API key".
-   3. Copy the key and paste it below, between the quotes.
+   The chat talks to a Cloudflare Worker that holds the Gemini
+   API key SERVER-SIDE. Never put an API key in this file — this
+   site is public, and Google auto-deletes any exposed key.
 
-   RECOMMENDED once your site is live (protects your quota):
-   In https://console.cloud.google.com → APIs & Services →
-   Credentials → your key → "Application restrictions" →
-   Websites → add your domain (e.g. https://your-domain.com/*).
+   Setup instructions live in cloudflare-worker.js (repo root).
+   Once the Worker is deployed, paste its URL below.
    ============================================================ */
 
 window.HAZEEM_AI = {
-  apiKey: 'AQ.Ab8RN6Ir8xKw8OODpPkP4ageCb8Znc3St2M8Y0O8m-ojoLn6eQ',
+  workerUrl: 'PASTE_YOUR_WORKER_URL_HERE', /* e.g. https://hazeem-ai.yourname.workers.dev */
+
+  /* Local testing ONLY (never commit a real key): direct mode
+     is used if workerUrl is unset and apiKey is filled in. */
+  apiKey: '',
   model: 'gemini-flash-latest',
 };
