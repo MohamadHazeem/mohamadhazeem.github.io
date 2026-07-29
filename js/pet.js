@@ -154,25 +154,31 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
   window.addEventListener('themechange', () => { syncTheme(); renderer.render(scene, camera); });
 
   /* ---------------- true cursor gaze ----------------
-     Angle from Mo's head position ON SCREEN to the pointer,
-     so he looks exactly where the cursor is. */
-  let headScreen = { x: 0, y: 0 };
-  function measureHead() {
-    const r = canvas.getBoundingClientRect();
-    headScreen = { x: r.left + r.width * 0.5, y: r.top + r.height * 0.42 };
-  }
-  measureHead();
-  window.addEventListener('resize', measureHead);
+     The cursor's screen position is unprojected through the render
+     camera into Mo's 3D world; the exact look direction is computed
+     from his head to that point. The head turns within natural
+     limits, and the pupils cover the REMAINING angle precisely —
+     so the combined gaze always lands on the cursor. */
+  pet.rotation.order = 'YXZ'; /* yaw first, then pitch — screen-natural */
+  let rect = canvas.getBoundingClientRect();
+  window.addEventListener('resize', () => { rect = canvas.getBoundingClientRect(); });
 
   const clampV = (v, a, b) => Math.min(b, Math.max(a, v));
+  const HEAD_WORLD = new THREE.Vector3(0, 0.9, 0); /* Mo's eye level */
+  const unproj = new THREE.Vector3();
   const gaze = { yaw: 0, pitch: 0, tYaw: 0, tPitch: 0 };
-  const FOCAL = 380; /* virtual px distance — smaller = stronger head turn */
+
   if (!prefersReduced) {
     window.addEventListener('pointermove', (e) => {
-      const dx = e.clientX - headScreen.x;
-      const dy = e.clientY - headScreen.y;
-      gaze.tYaw = clampV(Math.atan2(dx, FOCAL), -0.95, 0.95);
-      gaze.tPitch = clampV(Math.atan2(dy, FOCAL), -0.75, 0.55);
+      /* the canvas is display:none until Mo activates — re-measure once visible */
+      if (!rect.width) rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      /* cursor → NDC relative to Mo's canvas (values beyond ±1 are fine) */
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      unproj.set(ndcX, ndcY, 0.5).unproject(camera).sub(HEAD_WORLD).normalize();
+      gaze.tYaw = Math.atan2(unproj.x, unproj.z);
+      gaze.tPitch = Math.atan2(unproj.y, Math.hypot(unproj.x, unproj.z));
     }, { passive: true });
   }
 
@@ -295,15 +301,21 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
       antenna.position.y = 0.88 + bob;
       shadow.scale.setScalar(1 - Math.sin(t * 2.1) * 0.06);
 
-      /* true gaze: head turns toward the cursor… */
+      /* true gaze: the head turns toward the cursor within natural
+         limits (eyes dart faster than the head)… */
       gaze.yaw += (gaze.tYaw - gaze.yaw) * 0.14;
       gaze.pitch += (gaze.tPitch - gaze.pitch) * 0.14;
-      pet.rotation.y = gaze.yaw;
-      pet.rotation.x = gaze.pitch * 0.55;
-      /* …and pupils travel the remaining distance for pinpoint focus */
+      const headYaw = clampV(gaze.yaw, -1.0, 1.0);
+      const headPitch = clampV(gaze.pitch, -0.55, 0.7);
+      pet.rotation.y = headYaw;
+      pet.rotation.x = -headPitch;
+      /* …and the pupils cover EXACTLY the residual angle, so the
+         combined head+eye direction lands on the cursor. */
+      const resYaw = clampV(gaze.tYaw - headYaw, -0.9, 0.9);
+      const resPitch = clampV(gaze.tPitch - headPitch, -0.9, 0.9);
       for (const e of eyeParts) {
-        e.pupil.position.x = gaze.yaw * 0.075;
-        e.pupil.position.y = -gaze.pitch * 0.06;
+        e.pupil.position.x += (clampV(Math.sin(resYaw) * 0.16, -0.1, 0.1) - e.pupil.position.x) * 0.35;
+        e.pupil.position.y += (clampV(Math.sin(resPitch) * 0.16, -0.12, 0.12) - e.pupil.position.y) * 0.35;
       }
 
       /* floppy antenna: springs against head motion */
@@ -318,4 +330,5 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 
   holder.hidden = false;
   widget.classList.add('has-pet');
+  rect = canvas.getBoundingClientRect();
 })();
