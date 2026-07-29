@@ -1,10 +1,12 @@
 /* ============================================================
    "Mo" — Mohamad's AI pet (Three.js, ES module)
-   A cute hovering robot that lives on the chat corner:
-   bobs, blinks, watches the cursor, plays little animations,
-   greets on click and opens the Ask Hazeem AI chat.
-   Progressive enhancement — if WebGL/modules are unavailable,
-   the plain chat button remains.
+   A cute hovering robot on the chat corner: big glossy eyes that
+   genuinely look at your cursor (true angle from his head to the
+   pointer, with moving pupils), blush cheeks, a little smile,
+   floppy antenna, idle play, and a happy greeting that opens
+   the Ask Hazeem AI chat.
+   Progressive enhancement — without WebGL/modules the plain
+   chat button remains.
    ============================================================ */
 
 const STATIC_MODE = new URLSearchParams(location.search).has('static');
@@ -48,37 +50,79 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
   pet.position.y = 0.72;
   scene.add(pet);
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd9a44a, roughness: 0.35, metalness: 0.25 });
-  const faceMat = new THREE.MeshStandardMaterial({ color: 0x15130d, roughness: 0.55, metalness: 0.1 });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff3d6 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd9a44a, roughness: 0.32, metalness: 0.22 });
+  const faceMat = new THREE.MeshStandardMaterial({ color: 0x17140d, roughness: 0.5, metalness: 0.1 });
+  const scleraMat = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x241d10 });
+  const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const blushMat = new THREE.MeshBasicMaterial({ color: 0xe8875f, transparent: true, opacity: 0.55 });
   const tipMat = new THREE.MeshBasicMaterial({ color: 0xffd98a });
 
+  /* body — soft egg blob */
   const body = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 36), bodyMat);
-  body.scale.set(1, 0.92, 0.88);
+  body.scale.set(1, 0.94, 0.9);
   pet.add(body);
 
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.78, 36, 28), faceMat);
-  face.scale.set(1, 0.82, 0.5);
+  /* ear nubs */
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.17, 20, 16), bodyMat);
+    ear.position.set(0.82 * s, 0.6, 0);
+    pet.add(ear);
+  }
+
+  /* face visor */
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.8, 36, 28), faceMat);
+  face.scale.set(1, 0.85, 0.5);
   face.position.set(0, 0.08, 0.52);
   pet.add(face);
 
-  const eyes = new THREE.Group();
-  const eyeGeo = new THREE.SphereGeometry(0.14, 20, 16);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.scale.set(1, 1.4, 0.6);
-  eyeL.position.set(-0.28, 0.18, 0.94);
-  const eyeR = eyeL.clone();
-  eyeR.position.x = 0.28;
-  eyes.add(eyeL, eyeR);
-  pet.add(eyes);
+  /* eyes: big glossy sclera + moving pupil + sparkle highlights */
+  const eyesG = new THREE.Group();
+  pet.add(eyesG);
+  function makeEye(side) {
+    const eye = new THREE.Group();
+    eye.position.set(0.3 * side, 0.18, 0.9);
+    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 18), scleraMat);
+    sclera.scale.set(1, 1.25, 0.55);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 16), pupilMat);
+    pupil.scale.set(1, 1.3, 0.5);
+    pupil.position.z = 0.07;
+    const spark = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), sparkMat);
+    spark.position.set(-0.035, 0.06, 0.12);
+    const spark2 = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), sparkMat);
+    spark2.position.set(0.045, -0.03, 0.12);
+    eye.add(sclera, pupil, spark, spark2);
+    eyesG.add(eye);
+    return { eye, sclera, pupil };
+  }
+  const eyeL = makeEye(-1);
+  const eyeR = makeEye(1);
 
+  /* little smile — cream arc on the visor */
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.028, 10, 24, Math.PI * 0.75), scleraMat);
+  mouth.position.set(0, -0.1, 0.9);
+  mouth.rotation.z = Math.PI + (Math.PI * 0.75) / 2 - Math.PI / 2; /* arc curves like a smile */
+  pet.add(mouth);
+
+  /* blush cheeks */
+  for (const s of [-1, 1]) {
+    const blush = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), blushMat);
+    blush.position.set(0.56 * s, -0.1, 0.74);
+    blush.lookAt(blush.position.clone().multiplyScalar(2.5).add(new THREE.Vector3(0, 0, 1)));
+    pet.add(blush);
+  }
+
+  /* floppy antenna */
+  const antenna = new THREE.Group();
+  antenna.position.set(0, 0.88, 0);
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.42, 12), bodyMat);
-  stem.position.set(0, 1.05, 0);
-  pet.add(stem);
+  stem.position.y = 0.21;
   const tip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), tipMat);
-  tip.position.set(0, 1.32, 0);
-  pet.add(tip);
+  tip.position.y = 0.47;
+  antenna.add(stem, tip);
+  pet.add(antenna);
 
+  /* stubby arms */
   function makeArm(side) {
     const shoulder = new THREE.Group();
     shoulder.position.set(0.92 * side, 0.02, 0);
@@ -101,7 +145,6 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
   shadow.position.y = -0.62;
   scene.add(shadow);
 
-  /* theme awareness */
   function syncTheme() {
     const light = document.documentElement.dataset.theme === 'light';
     bodyMat.color.set(light ? 0xb8902e : 0xd9a44a);
@@ -110,24 +153,56 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
   syncTheme();
   window.addEventListener('themechange', () => { syncTheme(); renderer.render(scene, camera); });
 
-  /* ---------------- behaviours ---------------- */
-  const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+  /* ---------------- true cursor gaze ----------------
+     Angle from Mo's head position ON SCREEN to the pointer,
+     so he looks exactly where the cursor is. */
+  let headScreen = { x: 0, y: 0 };
+  function measureHead() {
+    const r = canvas.getBoundingClientRect();
+    headScreen = { x: r.left + r.width * 0.5, y: r.top + r.height * 0.42 };
+  }
+  measureHead();
+  window.addEventListener('resize', measureHead);
+
+  const clampV = (v, a, b) => Math.min(b, Math.max(a, v));
+  const gaze = { yaw: 0, pitch: 0, tYaw: 0, tPitch: 0 };
+  const FOCAL = 380; /* virtual px distance — smaller = stronger head turn */
   if (!prefersReduced) {
     window.addEventListener('pointermove', (e) => {
-      mouse.tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouse.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      const dx = e.clientX - headScreen.x;
+      const dy = e.clientY - headScreen.y;
+      gaze.tYaw = clampV(Math.atan2(dx, FOCAL), -0.95, 0.95);
+      gaze.tPitch = clampV(Math.atan2(dy, FOCAL), -0.75, 0.55);
     }, { passive: true });
   }
 
+  /* ---------------- expressions ---------------- */
+  const eyeParts = [eyeL, eyeR];
   function blink(double) {
     if (!g) return;
+    const scales = eyeParts.map((e) => e.sclera.scale);
     const tl = g.timeline();
-    tl.to([eyeL.scale, eyeR.scale], { y: 0.12, duration: 0.07, ease: 'power2.in' })
-      .to([eyeL.scale, eyeR.scale], { y: 1.4, duration: 0.12, ease: 'power2.out' });
+    tl.to(scales, { y: 0.12, duration: 0.07, ease: 'power2.in' })
+      .to(scales, { y: 1.25, duration: 0.12, ease: 'power2.out' });
     if (double) {
-      tl.to([eyeL.scale, eyeR.scale], { y: 0.12, duration: 0.07 }, '+=0.08')
-        .to([eyeL.scale, eyeR.scale], { y: 1.4, duration: 0.12 });
+      tl.to(scales, { y: 0.12, duration: 0.07 }, '+=0.08')
+        .to(scales, { y: 1.25, duration: 0.12 });
     }
+  }
+
+  /* happy squint: eyes become smiling arcs for a moment */
+  function happyEyes() {
+    if (!g) return;
+    eyeParts.forEach((e) => {
+      g.timeline()
+        .to(e.sclera.scale, { y: 0.5, duration: 0.18, ease: 'power2.out' })
+        .to(e.eye.position, { y: 0.24, duration: 0.18, ease: 'power2.out' }, '<')
+        .to(e.sclera.scale, { y: 1.25, duration: 0.3, ease: 'power2.inOut' }, '+=1.0')
+        .to(e.eye.position, { y: 0.18, duration: 0.3, ease: 'power2.inOut' }, '<');
+    });
+    g.timeline()
+      .to(mouth.scale, { x: 1.45, y: 1.45, duration: 0.2, ease: 'back.out(2)' })
+      .to(mouth.scale, { x: 1, y: 1, duration: 0.35, ease: 'power2.inOut' }, '+=1.0');
   }
 
   function wave() {
@@ -143,6 +218,14 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
     g.to(pet.rotation, { y: pet.rotation.y + Math.PI * 2, duration: 0.9, ease: 'back.out(1.4)' });
   }
 
+  function wiggle() {
+    if (!g) return;
+    g.timeline()
+      .to(pet.rotation, { z: 0.14, duration: 0.14, ease: 'sine.inOut' })
+      .to(pet.rotation, { z: -0.14, duration: 0.24, yoyo: true, repeat: 2, ease: 'sine.inOut' })
+      .to(pet.rotation, { z: 0, duration: 0.16, ease: 'sine.out' });
+  }
+
   function jump() {
     if (!g) return;
     g.timeline()
@@ -153,11 +236,10 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
       .to(pet.scale, { y: 1, x: 1, z: 1, duration: 0.25, ease: 'elastic.out(1, 0.5)' }, '<');
   }
 
-  /* random idle play */
   if (!prefersReduced) {
     setInterval(() => {
       if (document.hidden || widget.classList.contains('open')) return;
-      const acts = [() => blink(true), wave, spin, () => blink(false)];
+      const acts = [() => blink(true), wave, spin, wiggle];
       acts[Math.floor(Math.random() * acts.length)]();
     }, 7000);
     setInterval(() => {
@@ -174,13 +256,14 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
     greeting = true;
     jump();
     wave();
+    happyEyes();
     bubbleEl.textContent = GREETS[greetIdx++ % GREETS.length];
     bubbleEl.hidden = false;
     bubbleEl.classList.add('pop');
     setTimeout(() => {
       bubbleEl.classList.remove('pop');
       bubbleEl.hidden = true;
-      fab.click(); /* opens Ask Hazeem AI */
+      fab.click();
       greeting = false;
     }, 1300);
   }
@@ -197,32 +280,42 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 
   /* ---------------- render loop ---------------- */
   const clock = new THREE.Clock();
+  let prevYaw = 0;
   function frame() {
     requestAnimationFrame(frame);
     if (document.hidden || widget.classList.contains('open')) return;
     const t = clock.getElapsedTime();
     if (!prefersReduced) {
-      /* idle bob + sway (additive around the tweened base) */
-      body.position.y = Math.sin(t * 2.1) * 0.05;
-      face.position.y = 0.08 + Math.sin(t * 2.1) * 0.05;
-      eyes.position.y = Math.sin(t * 2.1) * 0.05;
-      stem.position.y = 1.05 + Math.sin(t * 2.1) * 0.055;
-      tip.position.y = 1.32 + Math.sin(t * 2.1 + 0.4) * 0.07;
+      /* idle bob */
+      const bob = Math.sin(t * 2.1) * 0.05;
+      body.position.y = bob;
+      face.position.y = 0.08 + bob;
+      eyesG.position.y = bob;
+      mouth.position.y = -0.1 + bob;
+      antenna.position.y = 0.88 + bob;
       shadow.scale.setScalar(1 - Math.sin(t * 2.1) * 0.06);
-      /* look at cursor */
-      mouse.x += (mouse.tx - mouse.x) * 0.08;
-      mouse.y += (mouse.ty - mouse.y) * 0.08;
-      pet.rotation.y += ((mouse.x * 0.55) - pet.rotation.y) * 0.1;
-      pet.rotation.x += ((mouse.y * 0.25) - pet.rotation.x) * 0.1;
-      eyes.position.x = mouse.x * 0.06;
-      /* antenna glow pulse */
+
+      /* true gaze: head turns toward the cursor… */
+      gaze.yaw += (gaze.tYaw - gaze.yaw) * 0.14;
+      gaze.pitch += (gaze.tPitch - gaze.pitch) * 0.14;
+      pet.rotation.y = gaze.yaw;
+      pet.rotation.x = gaze.pitch * 0.55;
+      /* …and pupils travel the remaining distance for pinpoint focus */
+      for (const e of eyeParts) {
+        e.pupil.position.x = gaze.yaw * 0.075;
+        e.pupil.position.y = -gaze.pitch * 0.06;
+      }
+
+      /* floppy antenna: springs against head motion */
+      const yawVel = gaze.yaw - prevYaw;
+      prevYaw = gaze.yaw;
+      antenna.rotation.z += ((-yawVel * 14 + Math.sin(t * 3) * 0.05) - antenna.rotation.z) * 0.12;
       tip.scale.setScalar(1 + Math.sin(t * 3.2) * 0.12);
     }
     renderer.render(scene, camera);
   }
   frame();
 
-  /* activate: hide the plain FAB, show Mo */
   holder.hidden = false;
   widget.classList.add('has-pet');
 })();
